@@ -1,24 +1,36 @@
 
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient()
+const bcrypt = require("bcryptjs"); // Importando o bcrypt 
 
 const userController = {
+    login: async (req, res) => {
+        const { email, password } = req.body;
+
+        if(!email || !password) {
+            return res.status(400).json({
+                msg: "All fields are required"
+            });
+        }
+    },
     create: async (req, res) => {
         try {
             const { name, email, password } = req.body;
-
-            const userCriado = await prisma.users.create({
-                data: {
-                    name, email, password
-                }
-            })
-
 
             if (!name || !email || !password) {
                 return res.status(400).json({
                     msg: "All fields are required"
                 })
             }
+
+            // Senha criptografada
+            const hashSenha = await bcrypt.hash(password, 10)
+
+            const userCriado = await prisma.users.create({
+                data: {
+                    name, email, password: hashSenha
+                }
+            })
 
             return res.status(201).json({
                 msg: "User created successfully",
@@ -28,7 +40,7 @@ const userController = {
         } catch (error) {
             console.log(error)
             return res.status(500).json({
-                msg: "Internal server error"
+                msg: "Internal server error",
             })
         }
     },

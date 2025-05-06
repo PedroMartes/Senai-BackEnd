@@ -3,6 +3,8 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient()
 const bcrypt = require("bcryptjs"); // Importando o bcrypt 
 
+const jwt = require("jsonwebtoken"); // Importando o JWT
+
 const userController = {
     login: async (req, res) => {
         const { email, password } = req.body;
@@ -12,6 +14,42 @@ const userController = {
                 msg: "All fields are required"
             });
         }
+
+        const userEncontrado = await prisma.users.findUnique({
+            where: { email }    
+        });
+
+        
+        if(!userEncontrado) {
+            return res.status(403).json({
+                masg: "E-mail or password invalid"
+            });
+        }
+
+        const isCerto = await bcrypt.compare(password, userEncontrado.password);
+
+        if(!isCerto) {
+            return res.status(401).json({
+                masg: "E-mail or password invalid"
+            });
+        }
+
+        // payload -> Conteudo de dentro so JWT
+        const payload = {
+            id: userEncontrado.id,
+            name: userEncontrado.name
+        }
+
+        //token vai sobreviver po 1h
+        //palavra secreta -> Winghslompson o maior do Brasil E de Cuba -> base64 -> V2luZ2hzbG9tcHNvbiBvIG1haW9yIGRvIEJyYXNpbCBFIGRlIEN1YmE=
+        const token = jwt.sign(payload, 'V2luZ2hzbG9tcHNvbiBvIG1haW9yIGRvIEJyYXNpbCBFIGRlIEN1YmE=' , {
+            expiresIn: '1h' // Tempo de expiração do token
+        })
+
+        return res.status(200).json({
+            token,
+            msg: "User autenticated successfully" 
+        })
     },
     create: async (req, res) => {
         try {
